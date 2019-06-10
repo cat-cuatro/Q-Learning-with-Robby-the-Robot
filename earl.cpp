@@ -15,6 +15,7 @@ int train_earl_robby(robot & robby, robot & earl, roboGrid & environment, qmatri
   int robbyCaptures = 0;
   float earlReward = 0;
   float earlAvg = 0;
+  int totalCaptures = 0;
   cout << "Do you want to TRAIN these robots, or do you want to TEST these robots?" << endl;
   cout << "0 = train, 1 = test. Bad input = train" << endl;
   cin >> flag;
@@ -48,17 +49,18 @@ int train_earl_robby(robot & robby, robot & earl, roboGrid & environment, qmatri
     robbyCaptures = earl.cansCollected + robbyCaptures;
     earlReward = earl.totalReward + earlReward;
     if(i % 100 == 0){
+      cout << endl;
       cout << "Averages for " << (i-100) << " to " << i << endl;
       avgReward = (float)oldRobby.totalReward/100.0;
       avgCans = (float)oldRobby.cansCollected/100.0;
       earlAvg = (float)earlReward/100.0;
-      cout << "// Robby Data //" << endl;
+      cout << ".. Robby Data .." << endl;
       cout << "Avg. Reward: " << avgReward << " Avg. Cans: " << avgCans << endl;
-      cout << "// Earl Data //" << endl;
-      cout << "Robby was captured: " << robbyCaptures << " times." << endl;
-      cout << "Avg. Reward: " << earlAvg << endl;
+      cout << ".. Earl Data .." << endl;
+      cout << "Avg. Reward: " << earlAvg << " Robby was captured: " << robbyCaptures << " times." << endl;
       oldRobby.cansCollected = 0;
       oldRobby.totalReward = 0;
+      totalCaptures = robbyCaptures + totalCaptures;
       robbyCaptures = 0;
       earlReward = 0;
     }
@@ -67,7 +69,7 @@ int train_earl_robby(robot & robby, robot & earl, roboGrid & environment, qmatri
     initializeEarl(earl, environment);
   }
   
-
+  return totalCaptures;
 }
 int run_earl(robot & earl, robot & robby, roboGrid & environment, qmatrix ** robbygrid, qmatrix ** earlgrid, qmatrix & currRobby, qmatrix & currEarl, int flag){
   int i = 0;
@@ -108,6 +110,12 @@ int run_earl(robot & earl, robot & robby, roboGrid & environment, qmatrix ** rob
     // now, update robby's current index for the next step sequence.
     currRobby.index = robbyNextState.index;
     ++robby.iterations;
+    if(PRINT_EACH_STEP == true){
+      prettyPrintArena(environment, earl, robby, 1);
+    }
+    if(LOG_HISTORY == true){
+      manageMovementHistory(environment);
+    }
   /*** Next, we want Earl to take a turn on the grid ***/
     observe(earl, environment, currEarl); // This is the same exact sequence as above, but not commented.
     actionTaken = earlChooseAction(earl, currEarl, earlgrid, environment, flag, captured, robby);
@@ -131,6 +139,12 @@ int run_earl(robot & earl, robot & robby, roboGrid & environment, qmatrix ** rob
     }
     ++i;
     ++earl.iterations;
+    if(PRINT_EACH_STEP == true){
+      prettyPrintArena(environment, earl, robby, 1);
+    }
+    if(LOG_HISTORY == true){
+      manageMovementHistory(environment);
+    }
   }
   return robby.cansCollected;
 }
@@ -180,7 +194,7 @@ int performCapture(robot & earl, roboGrid & environment, int action, bool & capt
 
   if(captured == true){
     reward = CAPTURE_REWARD;
-    cout << "Capture success!" << endl;
+//    cout << "Capture success!" << endl;
   }
   else{
   }
@@ -227,20 +241,22 @@ int scoutForRobby(robot & earl, roboGrid & environment, robot & robby){
   west[colCoord] = earl.column-1; // same as above, except for west.
   
   if(north[rowCoord] == robby.row && north[colCoord] == robby.column){
-    reward = 5;
+    reward = SEE_ROBBY_REWARD;
   }
   if(east[rowCoord] == robby.row && east[colCoord] == robby.column){
-    reward = 5;
+    reward = SEE_ROBBY_REWARD;
   }
   if(south[rowCoord] == robby.row && south[colCoord] == robby.column){
-    reward = 5;
+    reward = SEE_ROBBY_REWARD;
   }
   if(west[rowCoord] == robby.row && south[colCoord] == robby.column){
-    reward = 5;
+    reward = SEE_ROBBY_REWARD;
   }
-  if(reward == 5){
-    prettyPrintArena(environment, earl, robby);
-    cout << " --------------------------------- " << endl;
+  if(reward == SEE_ROBBY_REWARD){
+    if(PRINT_NEAR_ROBBY == true){
+      prettyPrintArena(environment, earl, robby, 1);
+      cout << " --------------------------------- " << endl;
+    }
   }
   return reward;
 }
@@ -310,11 +326,13 @@ void fourCaseCheck(roboGrid & environment, int prevRow, int prevCol, int flag){
     }
   }
 }
-void prettyPrintArena(roboGrid & arena, robot & earl, robot & robby){
+void prettyPrintArena(roboGrid & arena, robot & earl, robot & robby, int flag){
   int i = 0;
   int j = 0;
-  cout << "Cans on this grid: " << arena.cansPlaced << "//Robby Step: " << robby.iterations << " //Earl Step: "
-  << earl.iterations <<  endl;
+  if(flag == 1){
+    cout << "Cans on this grid: " << arena.cansPlaced << "//Robby Step: " << robby.iterations << " //Earl Step: "
+    << earl.iterations <<  endl;
+  }
   for(i = 0; i < MAX_DIMENSION; ++i){
     for(j = 0; j < MAX_DIMENSION; ++j){
       if(arena.grid[i][j] == CAN_ROBBY){
@@ -340,5 +358,41 @@ void prettyPrintArena(roboGrid & arena, robot & earl, robot & robby){
       }
     }
     cout << endl;
+  }
+}
+// this function takes the arena's current state, and pushes that state into the current history log
+// If the log is at maximum capacity, the log begins to be overwritten, and the counter adjusted.
+void manageMovementHistory(roboGrid & arena){ 
+  int i = 0;
+  int j = 0;
+//  robot temp1;
+//  robot temp2;
+  for(i = 0; i < MAX_DIMENSION; ++i){
+    for(j = 0; j < MAX_DIMENSION; ++j){
+      arena.logs->gridLogs[arena.counter].grid[i][j] = arena.grid[i][j];
+//      prettyPrintArena(arena, temp1, temp2, 0);
+    }
+  }
+  if(arena.counter == MAX_HISTORY){
+    arena.counter = 0; // reset, and begin overwriting data.
+  }
+  ++arena.counter;
+}
+void displayHistory(int lowBound, int highBound, roboGrid & arena){
+  int i = 0;
+  int reply = 0;
+  robot temp;
+  robot temp2;
+  for(i = lowBound; i < highBound; ++i){
+    cout << "Log Number: " << i << endl;
+    prettyPrintArena(arena.logs->gridLogs[i], temp, temp2, 0); // dont print extra info because we dont have it.
+    if(i % 10 == 0){
+      cout << "Enter 0 to continue reading logs. 1 to Stop." << endl;
+      cin >> reply;
+      cin.ignore(100, '\n');
+      if(reply != 0){
+        i = highBound;
+      }
+    }   
   }
 }

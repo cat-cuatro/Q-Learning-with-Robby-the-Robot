@@ -371,6 +371,7 @@ void initEnvironment(robot & robby, roboGrid & environment){ // set environment 
   robby.totalReward = 0;
   robby.iterations = 0;
   environment.cansPlaced = 0;
+  environment.counter = 0;
   for(i = 0; i < MAX_DIMENSION; ++i){
     for(j = 0; j < MAX_DIMENSION; ++j){
       dice = rand() % 100;
@@ -391,6 +392,11 @@ void initEnvironment(robot & robby, roboGrid & environment){ // set environment 
     --environment.cansPlaced;
     environment.grid[MAX_DIMENSION-1][MAX_DIMENSION-1] = 0;
   }
+  
+  environment.logs = new history;
+  environment.logs->gridLogs = new roboGrid[MAX_HISTORY];
+//  for(i = 0; i < MAX_HISTORY; ++i){
+//  }
 }
 void printState(qmatrix & toPrint){
   for(int i = 0; i < SENSORS; ++i){

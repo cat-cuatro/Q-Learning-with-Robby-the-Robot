@@ -36,11 +36,14 @@ int main(){
   int cansCollected = 0;
   int episodes = 1;
   bool captured = false;
+  int lowBound = 0;
+  int highBound = 0;
   cout << "CURRENT SETTINGS: (Changeable in robby.h)" << endl;
   cout << "Discount Factor: " << DISCOUNT_FACTOR << " || Learning Rate: " << LEARNING_RATE << " || Max Steps: " << MAX_STEPS
   << " || Can Placement: " << CAN_PLACEMENT_PERCENT << "%" << endl;
   cout << "Epsilon rate: " << stage1 << "% -> " << stage2 << "% -> " << stage3 << "% -> " << stage4 << "% -> " << stage5 << "%" << endl;
   while(userChoice != 0){
+    cout << endl;
     menuPrompt();
     cin >> userChoice;
     cin.ignore(100, '\n');
@@ -65,18 +68,28 @@ int main(){
         cout << "Robby picked up " << cansCollected << " cans during testing." << endl;
         break;
       case 4: // pretty print
-        prettyPrintArena(arena, earl, robby);
+        prettyPrintArena(arena, earl, robby, 1);
         break;
       case 5: // train robby w/ earl
         cout << "How many episodes to run Earl & Robby for?" << endl;
         cin >> episodes;
         cin.ignore(100, '\n');
-        cansCollected = 0;
+        cansCollected = 0; // Rather than make a new variable, I'm just going to reuse this one.. 
         cansCollected = train_earl_robby(robby, earl, arena, robbyqtable, earlqtable, episodes) + cansCollected;
-        cout << "Robby picked up " << cansCollected << " cans during training." << endl;
+        cout << "Robby was captured " << cansCollected << " times during training." << endl;
         break;
       case 6:// display earl's q-table
         displayQmatrix(earlqtable);
+        break;
+      case 7:
+        cout << "Let's select a range of values to view." << endl;
+        cout << "What index, up to "<<MAX_HISTORY-1<<" do you want to start at?" << endl;
+        cin >> lowBound;
+        cin.ignore(100, '\n');
+        cout << "What index, up to "<<MAX_HISTORY-1<<" do you want to end at?" << endl;
+        cin >> highBound;
+        cin.ignore(100, '\n');
+        displayHistory(lowBound, highBound, arena);
         break;
       case 32:
         printarena(arena);
@@ -106,6 +119,7 @@ int main(){
   }
   deallocateQmatrix(robbyqtable);
   deallocateQmatrix(earlqtable);
+  deleteHistory(arena);
   return 0;
 }
 void menuPrompt(){
@@ -118,6 +132,7 @@ void menuPrompt(){
   cout << "4. Pretty Print Arena." << endl;
   cout << "5. Train/Test Robby and Earl." << endl;
   cout << "6. Print Earl's Qtable." << endl;
+  cout << "7. Display movement history." << endl;
   cout << endl;
   cout << "// Debug Functionality //" << endl;
   cout << "32. Print Arena" << endl;
@@ -126,3 +141,8 @@ void menuPrompt(){
   cout << "35. Print Robby Data" << endl;
   cout << "0. Quit" << endl;
 };
+void deleteHistory(roboGrid & arena){
+  int i = 0;
+  delete arena.logs->gridLogs;
+  delete arena.logs;
+}

@@ -14,6 +14,7 @@ using namespace std;
 #define TRAINING 0
 #define TESTING 1
 #define FALSE -1
+#define MAX_HISTORY 1000
 /*** The following const identifiers are used for the grid model ***/
 #define WALL 2
 #define CAN 1
@@ -25,6 +26,9 @@ using namespace std;
 #define EARL_ROBBY_CAN 7
 #define JUST_EARL_ROBBY 8
 /*** Modifying anything above this line will require major changes to the program ***/
+#define PRINT_EACH_STEP false
+#define PRINT_NEAR_ROBBY false
+#define LOG_HISTORY true // may increase run time significantly.
 
 #define CAN_PLACEMENT_PERCENT 50
 #define LEARNING_RATE 0.2
@@ -32,6 +36,7 @@ using namespace std;
 #define MAX_STEPS 200
 #define CAPTURE_REWARD 10
 #define FAILED_CAPTURE_REWARD -10
+#define SEE_ROBBY_REWARD 5
 
 enum exploration{stage1 = 100, stage2 = 10, stage3 = 5, stage4 = 5, stage5 = 0, testStage = 10};
 // these represent percentage values that robby will explore versus choose optimally.
@@ -40,7 +45,11 @@ enum actions{goNorth, goEast, goSouth, goWest, Collect = 4, Current = Collect, C
 struct roboGrid{
   int cansPlaced; // number of cans placed in the grid
   int grid[MAX_DIMENSION][MAX_DIMENSION]; // maximum size of grid
-  
+  struct history* logs;
+  int counter;
+};
+struct history{
+  roboGrid *gridLogs;
 };
 struct robot{
   int cansCollected; // number of cans collected
@@ -159,5 +168,11 @@ void printAction(int action);
 int q_update(int & currIndex, int action, int reward, qmatrix & nextState, qmatrix ** actiongrid, int lookup);
 // it became desirable to place the q-learning algorithm inside of a function to reduce clutter in an already 
 // massive run() function. (See run_earl())
-void prettyPrintArena(roboGrid & arena, robot & earl, robot & robby);
+void prettyPrintArena(roboGrid & arena, robot & earl, robot & robby, int flag); // if flag == 1, then print extra info
 // pretty display for the arena space.
+void manageMovementHistory(roboGrid & arena);
+// keeps a log of how the environment changes
+void displayHistory(int lowBound, int highBound, roboGrid & arena);
+// allows user to display up to the last 5000 steps.
+void deleteHistory(roboGrid & arena);
+// deallocate memory
